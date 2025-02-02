@@ -136,6 +136,46 @@ if os.path.exists(DATASET_PATH):
     dataset = FaceDataset(DATASET_PATH, transform)
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
 
+class FaceDataset(Dataset):
+    def __init__(self, root_dirs, transform=None):
+        self.transform = transform
+        self.image_paths = []
+        self.labels = []
+        self.label_dict = {}
+        self._load_images(root_dirs)
+
+    def _load_images(self, root_dirs):
+        label_id = 0
+        for root_dir in root_dirs:
+            for person in os.listdir(root_dir):
+                person_dir = os.path.join(root_dir, person)
+                if os.path.isdir(person_dir):
+                    if person not in self.label_dict:
+                        self.label_dict[person] = label_id
+                        label_id += 1
+                    for img_name in os.listdir(person_dir):
+                        img_path = os.path.join(person_dir, img_name)
+                        self.image_paths.append(img_path)
+                        self.labels.append(self.label_dict[person])
+
+    def __getitem__(self, index):
+        img_path = self.image_paths[index]
+        label = self.labels[index]
+        image = Image.open(img_path).convert("RGB")
+        if self.transform:
+            image = self.transform(image)
+        return image, label
+
+    def __len__(self):
+        return len(self.image_paths)
+# Пути к вашим датасетам
+dataset_paths = ["./dataset1", "./dataset2", "./dataset3"]
+
+# Создание объединённого датасета
+combined_dataset = FaceDataset(dataset_paths, transform)
+
+# DataLoader
+dataloader = DataLoader(combined_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
     train(model, dataloader, criterion, optimizer)
 else:
     print("Ошибка: Указанный путь к датасету не существует.")
